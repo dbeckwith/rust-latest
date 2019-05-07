@@ -1,7 +1,11 @@
 [package]
 name = "rust-latest"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Daniel Beckwith <djbsnx@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+rustup-available-packages = "0.1.0"
+failure = "*"
+structopt = "0.2.15"
+lazy_static = "1.3.0"
