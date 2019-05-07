@@ -1,4 +1,4 @@
-use failure::{bail, Error};
+use failure::{bail, ensure, Error, ResultExt};
 use lazy_static::lazy_static;
 use rustup_available_packages::{AvailabilityData, Downloader};
 use std::collections::HashSet;
@@ -39,23 +39,24 @@ lazy_static! {
     };
 }
 
-fn main() -> Result<(), Error> {
+fn run() -> Result<(), Error> {
     let config = Config::from_args();
 
     let downloader = Downloader::with_default_source(&config.channel);
-    let manifests = downloader.get_last_manifests(config.max_age)?;
+    let manifests = downloader
+        .get_last_manifests(config.max_age)
+        .context("error downloading manifests")?;
     let dates = manifests
         .iter()
         .map(|manifest| manifest.date)
         .collect::<Vec<_>>();
     let mut availability = AvailabilityData::default();
     availability.add_manifests(manifests);
-    if !availability.get_available_targets().contains(TARGET) {
-        bail!(
-            "no availability information for target triple \"{}\"",
-            TARGET
-        );
-    }
+    ensure!(
+        availability.get_available_targets().contains(TARGET),
+        "no availability information for target triple \"{}\"",
+        TARGET
+    );
     let packages = &availability.get_available_packages() - &IGNORED_PACKAGES;
     let date = dates.into_iter().find(|&date| {
         packages
@@ -69,4 +70,17 @@ fn main() -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+fn main() {
+    if let Err(error) = run() {
+        eprintln!("{}", error);
+        for cause in error.iter_causes() {
+            eprintln!("\tcaused by: {}", cause)
+        }
+        if std::env::var("RUST_BACKTRACE") == Ok("1".to_string()) {
+            eprintln!("{}", error.backtrace());
+        }
+        std::process::exit(1);
+    }
 }
