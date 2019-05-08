@@ -57,7 +57,7 @@ OPTIONS:
                                [default: all]  [possible values: all, current]
 ```
 
-If you run the tool, it will output a toolchain name that be used in your `rust-toolchain` file:
+When you run the tool, it will output a toolchain name that can be used in your `rust-toolchain` file:
 
 ```console
 $ rust-latest
