@@ -7,7 +7,7 @@ edition = "2018"
 description = "A CLI tool to fetch the latest version of the Rust toolchain."
 repository = "https://github.com/dbeckwith/rust-latest"
 readme = "README.md"
-keywords = ["rust", "latest", "version", "release", "channel", "toolchain"]
+keywords = ["latest", "version", "release", "channel", "toolchain"]
 categories = ["command-line-utilities", "development-tools"]
 license = "MIT"
 
