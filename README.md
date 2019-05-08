@@ -64,6 +64,8 @@ $ rust-latest
 1.34.1
 ```
 
+Note that the tool requires an internet connection and can take a while to complete, as it has to download release manifests that can be serveral hundred kilobytes each. The farther back in time it has to search for a viable release, the longer it will take.
+
 ## Contributing
 
 If you have any problems using this tool or ideas for improvement, please [create an issue](https://github.com/dbeckwith/rust-latest/issues) and I'll respond as soon as I can!
