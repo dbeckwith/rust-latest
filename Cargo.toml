@@ -1,6 +1,6 @@
 [package]
 name = "rust-latest"
-version = "1.2.0"
+version = "1.2.1"
 authors = ["Daniel Beckwith <djbsnx@gmail.com>"]
 edition = "2018"
 
@@ -20,3 +20,4 @@ serde = { version = "1.0.91", features = ["derive"] }
 chrono = { version = "0.4.6", features = ["serde"] }
 toml = "0.5.0"
 regex = "1.1.6"
+maplit = "1.0.1"

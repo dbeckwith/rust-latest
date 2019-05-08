@@ -1,6 +1,7 @@
 use chrono::{Duration, NaiveDate};
 use clap::arg_enum;
 use failure::{bail, Error, ResultExt};
+use maplit::hashset;
 use regex::Regex;
 use reqwest::{Client, StatusCode};
 use serde::Deserialize;
@@ -50,7 +51,7 @@ struct Config {
 }
 
 arg_enum! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     enum TargetsOpt {
         All,
         Current,
@@ -71,9 +72,6 @@ static TIER_1_TARGETS: &[&str] = &[
     "x86_64-pc-windows-msvc",
     "x86_64-unknown-linux-gnu",
 ];
-
-// TODO: don't ignore if on the targets where they appear
-static IGNORED_PACKAGES: &[&str] = &["lldb-preview", "rust-mingw"];
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -198,10 +196,32 @@ fn make_toolchain_name(
 fn run() -> Result<(), Error> {
     let config = Config::from_args();
 
+    let mut ignored_packages = hashset! {
+        "lldb-preview",
+        "rust-mingw",
+    };
+    if config.targets == TargetsOpt::Current {
+        let allowed_packages = match CURRENT_TARGET {
+            "i686-apple-darwin" | "x86_64-apple-darwin" => {
+                hashset! {
+                    "lldb-preview",
+                }
+            },
+            "i686-pc-windows-gnu" | "x86_64-pc-windows-gnu" => {
+                hashset! {
+                    "rust-mingw",
+                }
+            },
+            _ => Default::default(),
+        };
+        ignored_packages = &ignored_packages - &allowed_packages;
+    }
+    let ignored_packages = ignored_packages.into_iter().collect::<Vec<_>>();
+
     if let Some(manifest) = find_latest_viable_manifest(
         &config.channel,
         config.max_age,
-        IGNORED_PACKAGES,
+        &ignored_packages,
         match config.targets {
             TargetsOpt::All => TIER_1_TARGETS,
             TargetsOpt::Current => &[CURRENT_TARGET],
