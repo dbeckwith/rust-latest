@@ -41,11 +41,13 @@ Daniel Beckwith <djbsnx@gmail.com>
 Determines the last known complete build of a Rust toolchain.
 
 USAGE:
-    rust-latest [OPTIONS]
+    rust-latest [FLAGS] [OPTIONS]
 
 FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
+    -d, --force-date    Whether date-stamped toolchains like stable-2019-04-25 should be used instead of version numbers
+                        for stable releases.
+    -h, --help          Prints help information
+    -V, --version       Prints version information
 
 OPTIONS:
     -c, --channel <channel>    Release channel to use. [default: stable]
@@ -59,7 +61,7 @@ If you run the tool, it will output a toolchain name that be used in your `rust-
 
 ```console
 $ rust-latest
-stable-2019-04-25
+1.34.1
 ```
 
 ## Contributing

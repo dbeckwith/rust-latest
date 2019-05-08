@@ -1,6 +1,7 @@
 use chrono::{Duration, NaiveDate};
 use clap::arg_enum;
 use failure::{bail, Error, ResultExt};
+use regex::Regex;
 use reqwest::{Client, StatusCode};
 use serde::Deserialize;
 use std::{collections::HashMap, io::Read};
@@ -38,6 +39,14 @@ struct Config {
         case_insensitive = true
     )]
     targets: TargetsOpt,
+
+    #[structopt(
+        short = "d",
+        long = "force-date",
+        help = "Whether date-stamped toolchains like stable-2019-04-25 should \
+                be used instead of version numbers for stable releases."
+    )]
+    force_date: bool,
 }
 
 arg_enum! {
@@ -66,30 +75,24 @@ static TIER_1_TARGETS: &[&str] = &[
 // TODO: don't ignore if on the targets where they appear
 static IGNORED_PACKAGES: &[&str] = &["lldb-preview", "rust-mingw"];
 
-/// A rustup manifest.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct Manifest {
-    /// A date for which the manifest is generated.
-    pub date: NaiveDate,
-    /// A map of available packages and their targets.
+struct Manifest {
+    date: NaiveDate,
     #[serde(rename = "pkg")]
-    pub packages: HashMap<String, PackageTargets>,
+    packages: HashMap<String, PackageTargets>,
 }
 
-/// Package info.
 #[derive(Debug, Deserialize)]
-pub struct PackageTargets {
-    /// Maps targets onto package availability info.
+struct PackageTargets {
+    version: String,
     #[serde(rename = "target")]
-    pub targets: HashMap<String, PackageInfo>,
+    targets: HashMap<String, PackageInfo>,
 }
 
-/// A per-target package information.
 #[derive(Debug, Deserialize)]
-pub struct PackageInfo {
-    /// If a package is available for a specific target.
-    pub available: bool,
+struct PackageInfo {
+    available: bool,
 }
 
 const BASE_URL: &str = "https://static.rust-lang.org/dist";
@@ -130,12 +133,12 @@ fn filter_manifest(
         .all(|package_info| package_info.available);
 }
 
-fn find_latest_viable_date(
+fn find_latest_viable_manifest(
     channel: &str,
     max_age: usize,
     ignored_packages: &[&str],
     targets: &[&str],
-) -> Result<Option<NaiveDate>, Error> {
+) -> Result<Option<Manifest>, Error> {
     let client = Client::new();
 
     let latest_manifest = match get_manifest(
@@ -161,17 +164,41 @@ fn find_latest_viable_date(
     for manifest in manifests {
         if let Some(manifest) = manifest? {
             if filter_manifest(&manifest, ignored_packages, targets) {
-                return Ok(Some(manifest.date));
+                return Ok(Some(manifest));
             }
         }
     }
+
     Ok(None)
+}
+
+fn get_rust_version(manifest: &Manifest) -> Option<String> {
+    let package = manifest.packages.get("rust")?;
+    let captures = Regex::new(r#"^(\d+\.\d+\.\d+)"#)
+        .unwrap()
+        .captures(&package.version)?;
+    let version = &captures[1];
+    Some(version.to_string())
+}
+
+fn make_toolchain_name(
+    manifest: &Manifest,
+    channel: &str,
+    force_date: bool,
+) -> String {
+    if !force_date && channel == "stable" {
+        if let Some(version) = get_rust_version(manifest) {
+            return version;
+        }
+    }
+
+    format!("{}-{}", channel, manifest.date)
 }
 
 fn run() -> Result<(), Error> {
     let config = Config::from_args();
 
-    if let Some(date) = find_latest_viable_date(
+    if let Some(manifest) = find_latest_viable_manifest(
         &config.channel,
         config.max_age,
         IGNORED_PACKAGES,
@@ -180,7 +207,9 @@ fn run() -> Result<(), Error> {
             TargetsOpt::Current => &[CURRENT_TARGET],
         },
     )? {
-        println!("{}-{}", config.channel, date);
+        let toolchain_name =
+            make_toolchain_name(&manifest, &config.channel, config.force_date);
+        println!("{}", toolchain_name);
     } else {
         bail!("no viable {} build found", config.channel);
     }
