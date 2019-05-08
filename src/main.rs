@@ -128,7 +128,7 @@ fn filter_manifest(
                 .filter_map(|&target| package_targets.targets.get(target))
                 .collect::<Vec<_>>()
         })
-        .all(|package_info| package_info.available);
+        .all(|package_info| package_info.available)
 }
 
 fn find_latest_viable_manifest(
