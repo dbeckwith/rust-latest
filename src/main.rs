@@ -118,7 +118,7 @@ fn filter_manifest(
     ignored_packages: &[&str],
     targets: &[&str],
 ) -> bool {
-    return manifest
+    manifest
         .packages
         .iter()
         .filter(|(package, _)| !ignored_packages.contains(&package.as_str()))
