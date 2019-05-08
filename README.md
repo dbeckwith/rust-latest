@@ -1,6 +1,23 @@
 # `rust-latest`
 
-A CLI tool to fetch the latest version of the Rust toolchain.
+A CLI tool to determine the latest version of the Rust toolchain. For `nightly`, it finds the latest version to include builds of all the builtin components (`clippy`, `rustfmt`, `rls`, etc.).
+
+```console
+$ rust-latest
+1.34.1
+$ rust-latest -c nightly
+nightly-2019-05-04
+```
+
+This tool *does not* actually download the toolchain; that job is still left to `rustup`. This tool is intended to be used to set your project's `rust-toolchain` file. Read more about what this is below.
+
+```console
+$ rustup show active-toolchain
+stable-x86_64-unknown-linux-gnu (default)
+$ rust-latest -c nightly > rust-toolchain
+$ rustup show active-toolchain
+nightly-2019-05-04-x86_64-unknown-linux-gnu (overridden by '/path/to/project/rust-toolchain')
+```
 
 ## The Problem
 
@@ -62,6 +79,10 @@ When you run the tool, it will output a toolchain name that can be used in your 
 ```console
 $ rust-latest
 1.34.1
+$ rust-latest --force-date
+stable-2019-04-25
+$ rust-latest -c nightly
+nightly-2019-05-04
 ```
 
 Note that the tool requires an internet connection and can take a while to complete, as it has to download release manifests that can be serveral hundred kilobytes each. The farther back in time it has to search for a viable release, the longer it will take.
