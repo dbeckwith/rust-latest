@@ -36,7 +36,7 @@ Installing the tool is as easy as `cargo install rust-latest`!
 
 ```console
 $ rust-latest --help
-rust-latest 1.1.0
+rust-latest 1.2.1
 Daniel Beckwith <djbsnx@gmail.com>
 Determines the last known complete build of a Rust toolchain.
 
