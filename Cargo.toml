@@ -13,7 +13,7 @@ license = "MIT"
 
 [dependencies]
 structopt = "0.2.15"
-clap = "*"
+clap = "2.33.0"
 reqwest = "0.9.16"
 failure = "0.1.5"
 serde = { version = "1.0.91", features = ["derive"] }
