@@ -1,11 +1,14 @@
 [package]
 name = "rust-latest"
-version = "1.0.1"
+version = "1.1.0"
 authors = ["Daniel Beckwith <djbsnx@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-rustup-available-packages = "0.1.0"
-failure = "*"
 structopt = "0.2.15"
-lazy_static = "1.3.0"
+clap = "*"
+reqwest = "0.9.16"
+failure = "0.1.5"
+serde = { version = "1.0.91", features = ["derive"] }
+chrono = { version = "0.4.6", features = ["serde"] }
+toml = "0.5.0"
