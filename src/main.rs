@@ -7,7 +7,9 @@ use std::{collections::HashMap, io::Read};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "Determines the last known complete build of rust nightly.")]
+#[structopt(
+    about = "Determines the last known complete build of a Rust toolchain."
+)]
 struct Config {
     #[structopt(
         short = "c",
@@ -60,6 +62,8 @@ static TIER_1_TARGETS: &[&str] = &[
     "x86_64-pc-windows-msvc",
     "x86_64-unknown-linux-gnu",
 ];
+
+// TODO: don't ignore if on the targets where they appear
 static IGNORED_PACKAGES: &[&str] = &["lldb-preview", "rust-mingw"];
 
 /// A rustup manifest.
