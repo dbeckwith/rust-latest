@@ -53,7 +53,7 @@ Installing the tool is as easy as `cargo install rust-latest`!
 
 ```console
 $ rust-latest --help
-rust-latest 1.2.1
+rust-latest 1.3.0
 Daniel Beckwith <djbsnx@gmail.com>
 Determines the last known complete build of a Rust toolchain.
 
@@ -70,6 +70,8 @@ OPTIONS:
     -c, --channel <channel>    Release channel to use. [default: stable]
     -a, --max-age <max_age>    Number of days back to search for viable builds. This is relative to the latest release
                                of the channel. [default: 90]
+    -p, --profile <profile>    Which package profile to use. [default: default]  [possible values: complete, default,
+                               minimal]
     -t, --targets <targets>    Which set of targets to filter by, either all Tier-1 targets or only the current target.
                                [default: all]  [possible values: all, current]
 ```

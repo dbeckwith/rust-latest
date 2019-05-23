@@ -22,6 +22,16 @@ struct Config {
     channel: String,
 
     #[structopt(
+        short = "p",
+        long = "profile",
+        help = "Which package profile to use.",
+        default_value = "default",
+        raw(possible_values = "&[\"complete\", \"default\", \"minimal\"]"),
+        case_insensitive = true
+    )]
+    profile: ProfileOpt,
+
+    #[structopt(
         short = "a",
         long = "max-age",
         help = "Number of days back to search for viable builds. This is \
@@ -48,6 +58,15 @@ struct Config {
                 be used instead of version numbers for stable releases."
     )]
     force_date: bool,
+}
+
+arg_enum! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum ProfileOpt {
+        Complete,
+        Default,
+        Minimal,
+    }
 }
 
 arg_enum! {
@@ -79,6 +98,7 @@ struct Manifest {
     date: NaiveDate,
     #[serde(rename = "pkg")]
     packages: HashMap<String, PackageTargets>,
+    profiles: HashMap<String, Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -115,14 +135,24 @@ fn get_manifest(client: &Client, url: &str) -> Result<Option<Manifest>, Error> {
 
 fn filter_manifest(
     manifest: &Manifest,
+    profile: &[&str],
     ignored_packages: &[&str],
     targets: &[&str],
 ) -> bool {
     manifest
         .packages
         .iter()
-        .filter(|(package, _)| !ignored_packages.contains(&package.as_str()))
-        .flat_map(|(_, package_targets)| {
+        .filter(|(package, _package_targets)| {
+            let package = package.as_str();
+            if ignored_packages.contains(&package) {
+                return false;
+            }
+            if !profile.contains(&package) {
+                return false;
+            }
+            true
+        })
+        .flat_map(|(_package, package_targets)| {
             targets
                 .iter()
                 .filter_map(|&target| package_targets.targets.get(target))
@@ -133,6 +163,7 @@ fn filter_manifest(
 
 fn find_latest_viable_manifest(
     channel: &str,
+    profile: ProfileOpt,
     max_age: usize,
     ignored_packages: &[&str],
     targets: &[&str],
@@ -161,7 +192,15 @@ fn find_latest_viable_manifest(
 
     for manifest in manifests {
         if let Some(manifest) = manifest? {
-            if filter_manifest(&manifest, ignored_packages, targets) {
+            let profile = manifest.profiles[match profile {
+                ProfileOpt::Complete => "complete",
+                ProfileOpt::Default => "default",
+                ProfileOpt::Minimal => "minimal",
+            }]
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>();
+            if filter_manifest(&manifest, &profile, ignored_packages, targets) {
                 return Ok(Some(manifest));
             }
         }
@@ -220,6 +259,7 @@ fn run() -> Result<(), Error> {
 
     if let Some(manifest) = find_latest_viable_manifest(
         &config.channel,
+        config.profile,
         config.max_age,
         &ignored_packages,
         match config.targets {
