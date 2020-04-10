@@ -1,7 +1,7 @@
-required_version = "1.2.2"
+required_version = "1.4.8"
 condense_wildcard_suffixes = true
 edition = "2018"
-format_doc_comments = true
+format_code_in_doc_comments = true
 format_macro_matchers = true
 format_strings = true
 imports_layout = "HorizontalVertical"

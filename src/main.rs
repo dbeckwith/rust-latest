@@ -1,21 +1,21 @@
+use anyhow::{bail, Context, Result};
 use chrono::{Duration, NaiveDate};
 use clap::arg_enum;
-use failure::{bail, Error, ResultExt};
 use maplit::hashset;
 use regex::Regex;
-use reqwest::{Client, StatusCode};
+use reqwest::{blocking::Client, StatusCode};
 use serde::Deserialize;
 use std::{collections::HashMap, io::Read};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
-    about = "Determines the last known complete build of a Rust toolchain."
+    about = "Determines the last known complete build of a Rust toolchain.",
+    rename_all = "kebab"
 )]
 struct Config {
     #[structopt(
         short = "c",
-        long = "channel",
         help = "Release channel to use.",
         default_value = "stable"
     )]
@@ -23,17 +23,15 @@ struct Config {
 
     #[structopt(
         short = "p",
-        long = "profile",
         help = "Which package profile to use.",
         default_value = "default",
-        raw(possible_values = "&[\"complete\", \"default\", \"minimal\"]"),
+        possible_values = &["complete", "default", "minimal"],
         case_insensitive = true
     )]
     profile: ProfileOpt,
 
     #[structopt(
         short = "a",
-        long = "max-age",
         help = "Number of days back to search for viable builds. This is \
                 relative to the latest release of the channel.",
         default_value = "90"
@@ -42,18 +40,16 @@ struct Config {
 
     #[structopt(
         short = "t",
-        long = "targets",
         help = "Which set of targets to filter by, either all Tier-1 targets \
                 or only the current target.",
         default_value = "all",
-        raw(possible_values = "&[\"all\", \"current\"]"),
+        possible_values = &["all", "current"],
         case_insensitive = true
     )]
     targets: TargetsOpt,
 
     #[structopt(
         short = "d",
-        long = "force-date",
         help = "Whether date-stamped toolchains like stable-2019-04-25 should \
                 be used instead of version numbers for stable releases."
     )]
@@ -115,7 +111,8 @@ struct PackageInfo {
 
 const BASE_URL: &str = "https://static.rust-lang.org/dist";
 
-fn get_manifest(client: &Client, url: &str) -> Result<Option<Manifest>, Error> {
+// TODO: use async
+fn get_manifest(client: &Client, url: &str) -> Result<Option<Manifest>> {
     let mut res = client.get(url).send().context("error making request")?;
     match res.status() {
         StatusCode::OK => {},
@@ -167,7 +164,7 @@ fn find_latest_viable_manifest(
     max_age: usize,
     ignored_packages: &[&str],
     targets: &[&str],
-) -> Result<Option<Manifest>, Error> {
+) -> Result<Option<Manifest>> {
     let client = Client::new();
 
     let latest_manifest = match get_manifest(
@@ -232,7 +229,7 @@ fn make_toolchain_name(
     format!("{}-{}", channel, manifest.date)
 }
 
-fn run() -> Result<(), Error> {
+fn run() -> Result<()> {
     let config = Config::from_args();
 
     let mut ignored_packages = hashset! {
@@ -280,11 +277,8 @@ fn run() -> Result<(), Error> {
 fn main() {
     if let Err(error) = run() {
         eprintln!("{}", error);
-        for cause in error.iter_causes() {
+        for cause in error.chain().skip(1) {
             eprintln!("\tcaused by: {}", cause)
-        }
-        if std::env::var("RUST_BACKTRACE") == Ok("1".to_string()) {
-            eprintln!("{}", error.backtrace());
         }
         std::process::exit(1);
     }

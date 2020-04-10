@@ -12,12 +12,12 @@ categories = ["command-line-utilities", "development-tools"]
 license = "MIT"
 
 [dependencies]
-structopt = "0.2.15"
+structopt = "0.3.13"
 clap = "2.33.0"
-reqwest = "0.9.17"
-failure = "0.1.5"
-serde = { version = "1.0.91", features = ["derive"] }
-chrono = { version = "0.4.6", features = ["serde"] }
-toml = "0.5.1"
-regex = "1.1.6"
-maplit = "1.0.1"
+reqwest = { version = "0.10.4", features = ["blocking"] }
+anyhow = "1.0.28"
+serde = { version = "1.0.106", features = ["derive"] }
+chrono = { version = "0.4.11", features = ["serde"] }
+toml = "0.5.6"
+regex = "1.3.6"
+maplit = "1.0.2"
