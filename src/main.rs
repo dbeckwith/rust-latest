@@ -174,36 +174,34 @@ fn find_latest_viable_manifest(
         Some(manifest) => manifest,
         None => bail!("no manifest found for release channel {}", channel),
     };
-    let start_date = latest_manifest.date;
 
+    let start_date = latest_manifest.date;
     let dates = (1..max_age).filter_map(|day| {
         start_date.checked_sub_signed(Duration::days(day as i64))
     });
-    let manifests =
-        std::iter::once(Ok(Some(latest_manifest))).chain(dates.map(|date| {
+
+    std::iter::once(Ok(latest_manifest))
+        .chain(dates.filter_map(|date| {
             get_manifest(
                 &client,
                 &format!("{}/{}/channel-rust-{}.toml", BASE_URL, date, channel),
             )
-        }));
-
-    for manifest in manifests {
-        if let Some(manifest) = manifest? {
-            let profile = manifest.profiles[match profile {
-                ProfileOpt::Complete => "complete",
-                ProfileOpt::Default => "default",
-                ProfileOpt::Minimal => "minimal",
-            }]
-            .iter()
-            .map(String::as_str)
-            .collect::<Vec<_>>();
-            if filter_manifest(&manifest, &profile, ignored_packages, targets) {
-                return Ok(Some(manifest));
-            }
-        }
-    }
-
-    Ok(None)
+            .transpose()
+        }))
+        .find(|manifest| {
+            manifest.as_ref().map_or(true, |manifest| {
+                let profile = manifest.profiles[match profile {
+                    ProfileOpt::Complete => "complete",
+                    ProfileOpt::Default => "default",
+                    ProfileOpt::Minimal => "minimal",
+                }]
+                .iter()
+                .map(String::as_str)
+                .collect::<Vec<_>>();
+                filter_manifest(&manifest, &profile, ignored_packages, targets)
+            })
+        })
+        .transpose()
 }
 
 fn get_rust_version(manifest: &Manifest) -> Option<String> {
