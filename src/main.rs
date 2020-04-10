@@ -76,9 +76,8 @@ arg_enum! {
 const CURRENT_TARGET: &str = env!("TARGET");
 
 /// All Rust Tier 1 targets.
-/// https://github.com/rust-lang/rustup-components-history/blob/0541afebe68f77acf13cdab4af9ee7db69183660/html/src/opts.rs#L93
+/// https://github.com/rust-lang/rustup-components-history/blob/dffa0dc0d7c3509ea4fc56206154367abcf9bc89/web/src/opts.rs#L110
 static TIER_1_TARGETS: &[&str] = &[
-    "i686-apple-darwin",
     "i686-pc-windows-gnu",
     "i686-pc-windows-msvc",
     "i686-unknown-linux-gnu",
