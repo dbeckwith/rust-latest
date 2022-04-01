@@ -1,82 +1,75 @@
 use anyhow::{bail, Context, Result};
 use chrono::{Duration, NaiveDate};
-use clap::arg_enum;
+use clap::{ArgEnum, Parser};
 use maplit::hashset;
 use regex::Regex;
 use reqwest::{blocking::Client, StatusCode};
 use serde::Deserialize;
 use std::{collections::HashMap, io::Read};
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-#[structopt(
+#[derive(Debug, Parser)]
+#[clap(
     about = "Determines the last known complete build of a Rust toolchain.",
     rename_all = "kebab"
 )]
 struct Config {
-    #[structopt(
-        short = "c",
+    #[clap(
+        short = 'c',
         help = "Release channel to use.",
         default_value = "stable"
     )]
     channel: String,
 
-    #[structopt(
-        short = "p",
+    #[clap(
+        short = 'p',
         help = "Which package profile to use.",
-        default_value = "default",
-        possible_values = &["complete", "default", "minimal"],
-        case_insensitive = true
+        arg_enum,
+        default_value = "default"
     )]
     profile: ProfileOpt,
 
-    #[structopt(
-        short = "a",
+    #[clap(
+        short = 'a',
         help = "Number of days back to search for viable builds. This is \
                 relative to the latest release of the channel.",
         default_value = "90"
     )]
     max_age: usize,
 
-    #[structopt(
-        short = "t",
+    #[clap(
+        short = 't',
         help = "Which set of targets to filter by, either all Tier-1 targets \
                 or only the current target.",
-        default_value = "all",
-        possible_values = &["all", "current"],
-        case_insensitive = true
+        arg_enum,
+        default_value = "all"
     )]
     targets: TargetsOpt,
 
-    #[structopt(
-        short = "d",
+    #[clap(
+        short = 'd',
         help = "Whether date-stamped toolchains like stable-2019-04-25 should \
                 be used instead of version numbers for stable releases."
     )]
     force_date: bool,
 }
 
-arg_enum! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    enum ProfileOpt {
-        Complete,
-        Default,
-        Minimal,
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ArgEnum)]
+enum ProfileOpt {
+    Complete,
+    Default,
+    Minimal,
 }
 
-arg_enum! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    enum TargetsOpt {
-        All,
-        Current,
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ArgEnum)]
+enum TargetsOpt {
+    All,
+    Current,
 }
 
 const CURRENT_TARGET: &str = env!("TARGET");
 
-/// All Rust Tier 1 targets.
-/// https://github.com/rust-lang/rustup-components-history/blob/dffa0dc0d7c3509ea4fc56206154367abcf9bc89/web/src/opts.rs#L110
+/// All Rust Tier 1 targets as specified by
+/// [`rust-components-history`](https://github.com/rust-lang/rustup-components-history/blob/dc6890bde289ac72d9d16959e4432f72f30c051b/web/src/opts.rs#L115-L122).
 static TIER_1_TARGETS: &[&str] = &[
     "i686-pc-windows-gnu",
     "i686-pc-windows-msvc",
@@ -85,6 +78,7 @@ static TIER_1_TARGETS: &[&str] = &[
     "x86_64-pc-windows-gnu",
     "x86_64-pc-windows-msvc",
     "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
 ];
 
 #[derive(Debug, Deserialize)]
@@ -197,7 +191,7 @@ fn find_latest_viable_manifest(
                 .iter()
                 .map(String::as_str)
                 .collect::<Vec<_>>();
-                filter_manifest(&manifest, &profile, ignored_packages, targets)
+                filter_manifest(manifest, &profile, ignored_packages, targets)
             })
         })
         .transpose()
@@ -227,7 +221,7 @@ fn make_toolchain_name(
 }
 
 fn run() -> Result<()> {
-    let config = Config::from_args();
+    let config = Config::parse();
 
     let mut ignored_packages = hashset! {
         "lldb-preview",
