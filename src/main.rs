@@ -1,9 +1,9 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use chrono::{Duration, NaiveDate};
-use clap::{ArgEnum, Parser};
+use clap::{Parser, ValueEnum};
 use maplit::hashset;
 use regex::Regex;
-use reqwest::{blocking::Client, StatusCode};
+use reqwest::{StatusCode, blocking::Client};
 use serde::Deserialize;
 use std::{collections::HashMap, io::Read};
 
@@ -15,6 +15,7 @@ use std::{collections::HashMap, io::Read};
 struct Config {
     #[clap(
         short = 'c',
+        long,
         help = "Release channel to use.",
         default_value = "stable"
     )]
@@ -22,14 +23,16 @@ struct Config {
 
     #[clap(
         short = 'p',
+        long,
         help = "Which package profile to use.",
-        arg_enum,
+        value_enum,
         default_value = "default"
     )]
     profile: ProfileOpt,
 
     #[clap(
         short = 'a',
+        long,
         help = "Number of days back to search for viable builds. This is \
                 relative to the latest release of the channel.",
         default_value = "90"
@@ -38,29 +41,31 @@ struct Config {
 
     #[clap(
         short = 't',
+        long,
         help = "Which set of targets to filter by, either all Tier-1 targets \
                 or only the current target.",
-        arg_enum,
+        value_enum,
         default_value = "all"
     )]
     targets: TargetsOpt,
 
     #[clap(
         short = 'd',
+        long,
         help = "Whether date-stamped toolchains like stable-2019-04-25 should \
                 be used instead of version numbers for stable releases."
     )]
     force_date: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ArgEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum ProfileOpt {
     Complete,
     Default,
     Minimal,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ArgEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum TargetsOpt {
     All,
     Current,
@@ -68,17 +73,16 @@ enum TargetsOpt {
 
 const CURRENT_TARGET: &str = env!("TARGET");
 
-/// All Rust Tier 1 targets as specified by
-/// [`rust-components-history`](https://github.com/rust-lang/rustup-components-history/blob/dc6890bde289ac72d9d16959e4432f72f30c051b/web/src/opts.rs#L115-L122).
+/// All Rust [Tier 1 targets](https://doc.rust-lang.org/nightly/rustc/platform-support.html).
 static TIER_1_TARGETS: &[&str] = &[
-    "i686-pc-windows-gnu",
+    "aarch64-apple-darwin",
+    "aarch64-pc-windows-msvc",
+    "aarch64-unknown-linux-gnu",
     "i686-pc-windows-msvc",
     "i686-unknown-linux-gnu",
-    "x86_64-apple-darwin",
     "x86_64-pc-windows-gnu",
     "x86_64-pc-windows-msvc",
     "x86_64-unknown-linux-gnu",
-    "aarch64-unknown-linux-gnu",
 ];
 
 #[derive(Debug, Deserialize)]
@@ -160,12 +164,12 @@ fn find_latest_viable_manifest(
 ) -> Result<Option<Manifest>> {
     let client = Client::new();
 
-    let latest_manifest = match get_manifest(
+    let Some(latest_manifest) = get_manifest(
         &client,
         &format!("{}/channel-rust-{}.toml", BASE_URL, channel),
-    )? {
-        Some(manifest) => manifest,
-        None => bail!("no manifest found for release channel {}", channel),
+    )?
+    else {
+        bail!("no manifest found for release channel {}", channel)
     };
 
     let start_date = latest_manifest.date;
@@ -211,10 +215,11 @@ fn make_toolchain_name(
     channel: &str,
     force_date: bool,
 ) -> String {
-    if !force_date && channel == "stable" {
-        if let Some(version) = get_rust_version(manifest) {
-            return version;
-        }
+    if !force_date
+        && channel == "stable"
+        && let Some(version) = get_rust_version(manifest)
+    {
+        return version;
     }
 
     format!("{}-{}", channel, manifest.date)
@@ -245,7 +250,7 @@ fn run() -> Result<()> {
     }
     let ignored_packages = ignored_packages.into_iter().collect::<Vec<_>>();
 
-    if let Some(manifest) = find_latest_viable_manifest(
+    let Some(manifest) = find_latest_viable_manifest(
         &config.channel,
         config.profile,
         config.max_age,
@@ -254,13 +259,14 @@ fn run() -> Result<()> {
             TargetsOpt::All => TIER_1_TARGETS,
             TargetsOpt::Current => &[CURRENT_TARGET],
         },
-    )? {
-        let toolchain_name =
-            make_toolchain_name(&manifest, &config.channel, config.force_date);
-        println!("{}", toolchain_name);
-    } else {
-        bail!("no viable {} build found", config.channel);
-    }
+    )?
+    else {
+        bail!("no viable {} build found", config.channel)
+    };
+
+    let toolchain_name =
+        make_toolchain_name(&manifest, &config.channel, config.force_date);
+    println!("{}", toolchain_name);
 
     Ok(())
 }
